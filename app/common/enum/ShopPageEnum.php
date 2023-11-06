@@ -209,12 +209,17 @@ class ShopPageEnum{
         'pc'            => '',
     ];
 
-    //拼团记录
+    //专场活动
     const ACTIVITY_PAGE = [
         'mobile'        => '/pages/activity/activity',
         'pc'            => '',
     ];
 
+    //群代运营
+    const GROUP_PAGE = [
+        'mobile'        => '/bundle/pages/group_spread/group_spread',
+        'pc'            => '',
+    ];
 
 
 
@@ -424,7 +429,13 @@ class ShopPageEnum{
             'params'    => [],
             'type'      => 'shop',
         ],
-
+        [
+            'index'     => 29,
+            'name'      => '群代运营',
+            'path'      => self::GROUP_PAGE['mobile'],
+            'params'    => [],
+            'type'      => 'shop',
+        ]
     ];
 
 

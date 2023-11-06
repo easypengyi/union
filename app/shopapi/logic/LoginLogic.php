@@ -23,6 +23,7 @@ use app\shopapi\service\{
     WechatSerService
 };
 use app\common\{enum\LoginEnum,
+    model\GroupOperator,
     model\User,
     logic\BaseLogic,
     service\ConfigService,
@@ -63,6 +64,12 @@ class LoginLogic  extends BaseLogic
             $user = User::where($where)->findOrEmpty();
             if ($user->isEmpty()) {
                 throw new \Exception('用户不存在');
+            }
+
+            //是否被冻结
+            $group = GroupOperator::where('user_id', $user->id)->find();
+            if(!is_null($group) && $group->is_freeze == 1){
+                throw new \Exception('账号冻结，请联系客服处理');
             }
 
             //更新登录信息

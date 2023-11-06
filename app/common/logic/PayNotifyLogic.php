@@ -145,6 +145,10 @@ class PayNotifyLogic extends BaseLogic
 
         // 生成分销订单
         DistributionOrderGoodsLogic::add($order['id']);
+
+        // 生成运营订单
+        GroupOrderGoodsLogic::add($order['id'], $order['user_id']);
+
         // 生成合作伙伴分佣订单
 //        PartnersyOrderGoodsLogic::add($order['id']);
         // 更新分销商等级

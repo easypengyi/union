@@ -28,6 +28,7 @@ use app\common\enum\NoticeEnum;
 use app\common\enum\OrderEnum;
 use app\common\logic\AccountLogLogic;
 use app\common\model\AfterSale;
+use app\common\model\GroupOrderGoods;
 use app\common\model\User;
 use app\common\model\DistributionOrderGoods;
 use app\common\model\OrderGoods;
@@ -113,6 +114,8 @@ class DistributionSettlement extends Command
                     ]
                 ]);
             }
+            //群代佣金结算
+            self::groupSettlement($time);
 
             Db::commit();
         }catch(\Exception $e) {
@@ -120,6 +123,58 @@ class DistributionSettlement extends Command
             Log::write('结算分销订单出错:'.$e->getMessage());
         }
     }
+
+    /**
+     * 结算群代佣金
+     *
+     * @param $time
+     */
+    public static function groupSettlement($time){
+        // 正常收货后的情况
+        $where1 = [
+            ['dog.status', '=', DistributionOrderGoodsEnum::UN_RETURNED],
+            ['o.order_status', '=', OrderEnum::STATUS_FINISH],
+            // 确认收货时间 <= 当前时间 - 结算时间
+            ['o.confirm_take_time', '<=', $time],
+        ];
+        // 未确认收货前，发生退款或取消订单的情况
+        $where2 = [
+            ['dog.status', '=', DistributionOrderGoodsEnum::UN_RETURNED],
+            ['o.order_status', '=', OrderEnum::STATUS_CLOSE],
+            ['o.confirm_take_time', 'exp', Db::raw('is null')],
+        ];
+
+        $field = 'dog.id,dog.user_id,dog.order_goods_id,dog.earnings';
+
+        $lists = GroupOrderGoods::alias('dog')
+            ->leftJoin('order_goods og', 'og.id = dog.order_goods_id')
+            ->leftJoin('order o', 'o.id = og.order_id')
+            ->field($field)
+            ->whereOr([$where1, $where2])
+            ->select()
+            ->toArray();
+
+        foreach ($lists as $item) {
+            // 判断当前分销订单是否允许结算
+            if (!self::canSettle($item)) {
+                continue;
+            }
+            // 增加用户收益
+            self::incUserEarning($item);
+
+            // 记录账户流水
+            AccountLogLogic::add($item['user_id'],AccountLogEnum::BW_INC_DISTRIBUTION_SETTLE,AccountLogEnum::INC,$item['earnings'],'','运营订单');
+
+            // 更新分销订单状态
+            GroupOrderGoods::update([
+                'id' => $item['id'],
+                'status' => DistributionOrderGoodsEnum::RETURNED,
+                'settlement_time' => time()
+            ]);
+        }
+    }
+
+
 
     /**
      * @notes 判断分销订单是否需要结算

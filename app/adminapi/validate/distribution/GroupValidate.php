@@ -32,7 +32,7 @@ class GroupValidate extends BaseValidate
         'ids' => 'require|array',
         'level_id' => 'require',
         'shop_id' => 'require',
-        'room_ids' => 'require|array',
+        'rooms' => 'require|array',
         'account_id' => 'require',
     ];
 
@@ -41,8 +41,8 @@ class GroupValidate extends BaseValidate
         'ids.array' => '参数须为数组格式',
         'level_id.require' => '请选择运营等级',
         'shop_id.require' => '请选择商家',
-        'room_ids.require' => '请选择对应的群',
-        'room_ids.array' => '分配群须为数组格式',
+        'rooms.require' => '请选择对应的群',
+        'rooms.array' => '分配群须为数组格式',
         'account_id.require' => '请选择企微号',
     ];
 
@@ -53,7 +53,7 @@ class GroupValidate extends BaseValidate
      */
     public function sceneOpen()
     {
-        return $this->only(['ids', 'level_id', 'shop_id', 'shop_name', 'room_ids', 'account_id', 'account_name' ]);
+        return $this->only(['ids', 'level_id', 'shop_id', 'shop_name', 'rooms', 'account_id', 'account_name' ]);
     }
 
     /**

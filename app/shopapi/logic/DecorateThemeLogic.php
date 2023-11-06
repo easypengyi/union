@@ -18,10 +18,10 @@
 // +----------------------------------------------------------------------
 namespace app\shopapi\logic;
 
-use app\common\{
-    enum\ThemePageEnum,
+use app\common\{enum\ThemePageEnum,
     enum\YesNoEnum,
     model\Distribution,
+    model\GroupOperator,
     model\SelffetchVerifier,
     service\ThemeService,
     enum\ThemeConfigEnum,
@@ -124,6 +124,20 @@ class DecorateThemeLogic
 
         $page['content'] = ThemeService::getModuleData($page['content'],$config);
 
+        $flag = true;
+        $group = GroupOperator::where('user_id', $userId)->find();
+        if(!is_null($group) && $group->is_freeze == 0){
+            $flag = false;
+        }
+        foreach ($page['content'] as &$value){
+            if($value['name'] == 'userserve'){
+                foreach($value['content']['data'] as $key=>$item){
+                    if($flag && $item['name'] == '群代运营'){
+                        unset($value['content']['data'][$key]);
+                    }
+                }
+            }
+        }
 
         return $page;
     }

@@ -532,6 +532,7 @@ class OrderLogic extends BaseLogic
                 'is_new'            => $goods['is_new'],
                 'profit'            => $goods['profit'],
                 'channel_id'        => $goods['channel_id'],
+                'room_id'           => $goods['room_id'],
                 'supplier_id'       => $goods['supplier_id']
             ];
         }
@@ -630,6 +631,7 @@ class OrderLogic extends BaseLogic
             $goodsInfo['sub_price'] = round($goodsInfo['sell_price'] * $item['goods_num'], 2);
             $goodsInfo['goods_num'] = intval($item['goods_num']);
             $goodsInfo['channel_id'] = isset($item['channel_id']) ? $item['channel_id'] : 0;
+            $goodsInfo['room_id'] = isset($item['room_id']) ? $item['room_id'] : 0;
             $goodsLists[] = $goodsInfo;
 
             self::$totalNum += $item['goods_num'];

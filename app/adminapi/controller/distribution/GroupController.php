@@ -24,6 +24,7 @@ use app\adminapi\logic\distribution\DistributionLevelLogic;
 use app\adminapi\logic\distribution\GroupLogic;
 use app\adminapi\validate\distribution\DistributionLevelValidate;
 use app\adminapi\validate\distribution\GroupValidate;
+use app\common\logic\GroupOrderGoodsLogic;
 
 /**
  * 分销会员等级控制器
@@ -41,6 +42,17 @@ class GroupController extends BaseAdminController
     public function lists()
     {
         return $this->dataLists();
+    }
+
+    /**
+     * 群账单
+     *
+     * @return \think\response\Json
+     */
+    public function roomCommissionList(){
+        $user_id = input('user_id');
+        $result = GroupLogic::roomCommissionList($user_id);
+        return $this->data($result);
     }
 
     /**

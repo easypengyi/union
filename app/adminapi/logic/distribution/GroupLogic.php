@@ -20,6 +20,7 @@
 namespace app\adminapi\logic\distribution;
 
 use app\adminapi\logic\user\UserLogic;
+use app\common\enum\DistributionOrderGoodsEnum;
 use app\common\enum\YesNoEnum;
 use app\common\logic\BaseLogic;
 use app\common\model\Distribution;
@@ -27,6 +28,7 @@ use app\common\model\DistributionLevel;
 use app\common\model\DistributionOrderGoods;
 use app\common\model\GroupLevel;
 use app\common\model\GroupOperator;
+use app\common\model\GroupOrderGoods;
 use app\common\model\OrderGoods;
 use app\common\model\User;
 
@@ -37,6 +39,44 @@ use app\common\model\User;
  */
 class GroupLogic extends BaseLogic
 {
+    public static function roomCommissionList($user_id){
+        $date = strtotime(date('Y').'-01-01');
+        $field = [
+            "any_value(FROM_UNIXTIME(create_time,'%Y年%m月')) as date",
+            "any_value(FROM_UNIXTIME(create_time,'%Y')) as year",
+            "any_value(FROM_UNIXTIME(create_time,'%m')) as month",
+            'sum(earnings) as total_money',
+            'count(order_goods_id) as order_goods_num,room_id'
+        ];
+
+        $lists = GroupOrderGoods::field($field)
+            ->where('user_id', $user_id)
+            ->where('status', 'in', [DistributionOrderGoodsEnum::UN_RETURNED, DistributionOrderGoodsEnum::RETURNED])
+            ->where('create_time', '>', $date)
+            ->group('date,room_id')
+            ->select()
+            ->toArray();
+
+        $month_data = [];
+        foreach ($lists as $item){
+            $month_data[$item['room_id'] . '_' . intval($item['month'])] = $item['total_money'];
+        }
+
+        // 获取群信息
+        $user = GroupOperator::where('user_id', $user_id)->find();
+        $room_ids = explode(',', $user['room_ids']);
+        $room_names = explode(',', $user['room_names']);
+        $res = [];
+        foreach ($room_names as $key=> $name){
+            $data['name'] = $name;
+            for($i = 1; $i <= 12; $i++){
+                $data['sum_'.$i] = isset($month_data[$room_ids[$key].'_'.$i]) ? $month_data[$room_ids[$key].'_'.$i] : '0.00';
+            }
+            $res[] = $data;
+        }
+        return $res;
+    }
+
     /**
      * 获取商家信息
      *
@@ -51,7 +91,7 @@ class GroupLogic extends BaseLogic
     }
 
     /**
-     * 获取
+     * 获取群列表
      *
      * @return array
      */
@@ -59,6 +99,21 @@ class GroupLogic extends BaseLogic
         $params['shop_id'] = $shop_id;
         $res = self::reqPost('/shop/task/shopAccountList', $params);
         if($res['code'] == 1){
+            $room_list = $res['data']['room_list'];
+            $list = GroupOperator::field('room_ids')
+                ->where('shop_id', $shop_id)->where('is_freeze', 0)->select();
+            $flag_room = [];
+            foreach ($list as $item){
+                $flag_room = array_merge($flag_room, explode(',', $item['room_ids']));
+            }
+            if(count($flag_room) > 0){
+                foreach($room_list as $key=>$room){
+                    if(in_array($room['value'], $flag_room)){
+                        unset($room_list[$key]);
+                    }
+                }
+            }
+            $res['data']['room_list'] = $room_list;
             return $res['data'];
         }
         return [];
@@ -80,7 +135,7 @@ class GroupLogic extends BaseLogic
                 throw new \Exception('请选择有效用户');
             }
 
-            $group = GroupOperator::where('user_id', $countIds[0])->findOrEmpty();
+            $group = GroupOperator::where('user_id', $countIds[0])->find();
             if(!is_null($group)){
                 throw new \Exception('已经是运营商，无需重复操作');
             }
@@ -89,15 +144,22 @@ class GroupLogic extends BaseLogic
             if($level->isEmpty()) {
                 throw new \Exception('无效的运营等级');
             }
+            $room_ids = [];
+            $room_names = [];
+            foreach ($params['rooms'] as $room){
+                $room_ids[] = $room['value'];
+                $room_names[] = $room['name'];
+            }
             $updateData = [
                 'user_id'=> $countIds[0],
                 'level_id'=> $params['level_id'],
                 'shop_id' => $params['shop_id'],
                 'shop_name'=> $params['shop_name'],
-                'room_ids'=> implode(',', $params['room_ids']),
+                'room_ids'=> implode(',', $room_ids),
+                'room_names'=> implode(',', $room_names),
                 'account_id'=> $params['account_id'],
                 'account_name'=> $params['account_name'],
-                'operator_time'=> time(),
+                'operator_time'=> time()
             ];
 
             (new GroupOperator())->save($updateData);

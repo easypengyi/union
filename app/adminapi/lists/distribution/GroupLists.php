@@ -20,14 +20,11 @@
 namespace app\adminapi\lists\distribution;
 
 use app\adminapi\lists\BaseAdminDataLists;
-use app\common\enum\YesNoEnum;
 use app\common\lists\ListsExcelInterface;
 use app\common\lists\ListsSearchInterface;
-use app\common\model\DistributionLevel;
-use app\common\model\DistributionOrderGoods;
 use app\common\model\GroupLevel;
+use app\common\model\GroupOrderGoods;
 use app\common\model\User;
-use app\common\model\UserLevel;
 use app\common\service\FileService;
 
 /**
@@ -120,8 +117,8 @@ class GroupLists extends BaseAdminDataLists implements ListsSearchInterface,List
             $item['operator_time'] = $item['operator_time'] ? date('Y-m-d H:i:s', $item['operator_time']) : '';
             $item['avatar'] = trim($item['avatar']) ? FileService::getFileUrl($item['avatar']) : '';
             $item['level_name'] = GroupLevel::getLevelName($item['level_id']);
-            $item['earnings'] = DistributionOrderGoods::getEarnings($item['id']);
-            $item['wait_earnings'] = DistributionOrderGoods::getUnReturnedCommission($item['id']);
+            $item['earnings'] = GroupOrderGoods::getEarnings($item['user_id']);
+            $item['wait_earnings'] = GroupOrderGoods::getUnReturnedCommission($item['user_id']);
             $item['is_freeze_desc'] = $item['is_freeze'] ? '冻结' : '正常';
             $item['user_info'] = $item['nickname'] . '(' . $item['sn'] . ')';
         }
