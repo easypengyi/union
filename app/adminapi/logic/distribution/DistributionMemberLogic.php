@@ -59,15 +59,16 @@ class DistributionMemberLogic extends BaseLogic
             $updateData = [];
             $time = time();
             foreach($params['ids'] as $userId) {
-                $updateData[] = [
+                $update_item = [
                     'id' => $distributionIds[$userId],
                     'is_distribution' => YesNoEnum::YES,
                     'level_id' => $params['level_id'],
                     'distribution_time' => $time,
                 ];
                 if(isset($params['user_type'])){
-                    $updateData['user_type'] = $params['user_type'];
+                    $update_item['user_type'] = $params['user_type'];
                 }
+                $updateData[] = $update_item;
 
                 if(isset($distributionIds[$userId]) && (isset($params['user_type']) && $params['user_type'] == 1)){
                     $formatData = UserLogic::clearFirstLeader($params);

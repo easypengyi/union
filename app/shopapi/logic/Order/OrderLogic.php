@@ -18,6 +18,7 @@
 namespace app\shopapi\logic\Order;
 
 
+use akc\Akc;
 use app\common\enum\AfterSaleEnum;
 use app\common\enum\AfterSaleLogEnum;
 use app\common\enum\BargainEnum;
@@ -139,39 +140,32 @@ class OrderLogic extends BaseLogic
 
             //获取商品信息
             $goodsLists = self::getOrderGoodsData($params);
-
-
             //爱库存
-            $params['is_new'] =0;
-            $AkcLogic =new AkcLogic;
-            for ($i=0;$i<count($goodsLists);$i++)
-            {
-                if ($goodsLists[$i]['is_new'] ==1)
-                {
-                    $params['is_new'] =1;
-
-                    $get= $AkcLogic->goodsDetail($goodsLists[$i]);
-
-                    if (!empty($get)) {
-                        if ($get['status'] == 0){
-
+            $params['is_new'] = 0;
+            foreach ($goodsLists as &$item){
+                $params['is_new'] = $item['is_new'];
+                if($item['is_new'] == 1){
+                    $akc_goods_detail = self::getGoodsDetail($item['activity_id'], $item['goods_code']);
+                    if(!empty($akc_goods_detail)){
+                        if ($akc_goods_detail['status'] == 0){
                             self::$error = '商品已下架';
                             return false;
                         }
-                    }
-                    $get= $AkcLogic->goodsStock($goodsLists[$i]);
-                    //print_r($get);exit;
-                    if ($get >0)
-                    {
-                    }else
-                    {
-                        self::$error = '库存不足';
-                        return false;
+                        //查询库存
+                        $skuList = $akc_goods_detail['skuList'];
+                        foreach ($skuList as $sku){
+                            if($sku['skuId'] == $item['skuId'] && $sku['leftStoreNum'] < 1){
+                                self::$error = '库存不足';
+                                return false;
+                            }
+                            //更新佣金
+                            if($sku['skuId'] == $item['skuId']){
+                                $item['profit'] = round(($sku['price2C'] - $sku['settlementPrice'])/100 ,2);
+                            }
+                        }
                     }
                 }
             }
-
-
 
             //计算运费(自提订单不需要运费)
             self::$orderPrice['express_price'] = ($params['delivery_type'] == DeliveryEnum::SELF_DELIVERY) ? 0 : FreightLogic::calculateFreight($goodsLists, $userAddress);
@@ -250,7 +244,26 @@ class OrderLogic extends BaseLogic
         }
     }
 
+    /**
+     * 获取商品详情
+     *
+     * @param $activityId
+     * @param $productId
+     * @param $skuId
+     * @return array
+     */
+    public static function getGoodsDetail($activityId, $productId){
+        $akc = new Akc();
+//        $productId = 2385779479392266773;
+//        $activityId = 1719895991298220033;
+        $res = $akc->goodsDetail($activityId, $productId);
+        $info = [];
+        if($res['resultCode'] == 999999){
+            $info = $res['data']['product'];
+        }
 
+        return $info;
+    }
 
     /**
      * @notes 提交订单前验证
@@ -531,8 +544,8 @@ class OrderLogic extends BaseLogic
                 'goods_snap'        => $goods,
                 'is_new'            => $goods['is_new'],
                 'profit'            => $goods['profit'],
-                'channel_id'        => $goods['channel_id'],
                 'room_id'           => $goods['room_id'],
+                'channel_id'        => $goods['channel_id'],
                 'supplier_id'       => $goods['supplier_id']
             ];
         }
@@ -540,6 +553,7 @@ class OrderLogic extends BaseLogic
 
         return $order;
     }
+
 
 
     /**
@@ -570,10 +584,10 @@ class OrderLogic extends BaseLogic
         $field = [
             'gi.id' => 'item_id', 'gi.image' => 'item_image',
             'gi.spec_value_str', 'spec_value_ids', 'gi.sell_price',
-            'gi.volume', 'gi.stock', 'gi.weight', 'g.id' => 'goods_id',
+            'gi.volume', 'gi.stock', 'gi.weight', 'g.id' => 'goods_id', 'g.code'=> 'goods_code',
             'g.name' => 'goods_name', 'g.status', 'g.delete_time', 'g.image',
             'g.express_type', 'g.express_money', 'g.express_template_id', 'g.is_express','g.is_selffetch','g.is_express'
-            , 'g.is_new','g.code','g.supplier_id','g.activity_id','gi.skuId','gi.profit'
+            , 'g.is_new','g.code','g.supplier_id','g.activity_id','gi.skuId','gi.cost_price','gi.profit'
         ];
 
         $goodsData = (new Goods())->alias('g')
@@ -630,8 +644,8 @@ class OrderLogic extends BaseLogic
 
             $goodsInfo['sub_price'] = round($goodsInfo['sell_price'] * $item['goods_num'], 2);
             $goodsInfo['goods_num'] = intval($item['goods_num']);
-            $goodsInfo['channel_id'] = isset($item['channel_id']) ? $item['channel_id'] : 0;
             $goodsInfo['room_id'] = isset($item['room_id']) ? $item['room_id'] : 0;
+            $goodsInfo['channel_id'] = isset($item['channel_id']) ? $item['channel_id'] : 0;
             $goodsLists[] = $goodsInfo;
 
             self::$totalNum += $item['goods_num'];

@@ -333,7 +333,7 @@ class WeChatPayService extends BasePayService
                             'order_status' => OrderEnum::STATUS_WAIT_DELIVERY,
                             'transaction_id' => $extra['transaction_id'] ?? ''
                         ], ['id' => $order['id']]);
-
+                        
                         PayNotifyLogic::handle('order', $message['out_trade_no'], $extra);
                         break;
                     case 'recharge':

@@ -106,7 +106,9 @@ class GoodsLogic extends BaseLogic
         $goods->sell_price      = $goods->spec_value_list[0]->sell_price;
         $goods->member_price    = $goods->spec_value_list[0]->member_price;
         $goods->lineation_price = $goods->spec_value_list[0]->lineation_price;
+        $goods->settlementPrice = $goods->spec_value_list[0]->cost_price; //结算价
         $goods->profit          = $goods->spec_value_list[0]->profit; //爱库存佣金
+
 
         $goods->goods_comment = $this->getComment($goods->id);
         $goods = $goods->toArray();

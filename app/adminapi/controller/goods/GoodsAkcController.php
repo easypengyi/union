@@ -67,19 +67,11 @@ class GoodsAkcController
         $result = (new OrderLogic())->deliveryakc($params);
     }
 
-    /**
-     * 查询售后单
-     *
-     * @return array
-     * @throws \think\db\exception\DataNotFoundException
-     * @throws \think\db\exception\DbException
-     * @throws \think\db\exception\ModelNotFoundException
-     */
-    public function querySaleList($params)
+    public function querySalelist()
     {
-        $params = array();
+        $params =array();
 
-        $result = (new AfterSaleLogic())->querySaleList($params);
+        $result = (new AfterSaleLogic())->querySalelist($params);
         if (false === $result) {
             return $this->fail(OrderLogic::getError());
         }

@@ -168,7 +168,8 @@ class CouponLogic
             // 使用商品
             "use_goods_type"  => $params['use_goods_type'],
             "use_goods_ids"   => empty($params['use_goods_ids']) ? '' : implode(',', $params['use_goods_ids']),
-            "status"          => 1
+            "status"          => 1,
+            "show_type"        => $params['show_type'] ?? 1,
         ]);
     }
 
@@ -200,6 +201,7 @@ class CouponLogic
                 "use_time"        => $params['use_time'] ?? 0,
                 // 获取方式
                 "get_type"        => $params['get_type'],
+                "show_type"       => $params['show_type'] ?? 1,
                 "get_num_type"    => $params['get_num_type'],
                 "get_num"         => $params['get_num'] ?? 0,
                 // 使用商品

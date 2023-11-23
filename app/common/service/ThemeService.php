@@ -120,13 +120,15 @@ class ThemeService
                     if(!empty($goodsIds)){
                         $goodsIds = array_reverse($goodsIds);
                     }
-//                    var_dump($flag);
+//                    var_dump($flag, $where);
                     if($flag){
                         $category_limit = GoodsActivityLogic::shieldCategoryList($category_id);
+//                        $category_limit = [];
                         $goods_ids = GoodsCategoryIndex::whereNotIn('category_id', $category_limit)->column('goods_id');
                         $map1 = array(['supplier_id', '=', $supplier_id]);
                         $map2 = array(['id', 'in', $goods_ids]);
                     }
+//                    var_dump($category_limit);die;
 
                     $orderField = implode(',', $goodsIds);
                     $goodsList = Goods::where(['id' => $goodsIds,'status'=>GoodsEnum::STATUS_SELL])
@@ -147,7 +149,7 @@ class ThemeService
                 //专场组件
                 case ThemePageEnum::ACTIVITY:
                     //获取专场列表
-                    $limit = false;
+                    $limit = 10;
 //                    $activityIds = array_column($content[$moduleKey]['content']['data'], 'id');
 //                    //如果id都是空，直接返回数组
 //                    if (empty($activityIds)) {
@@ -163,6 +165,7 @@ class ThemeService
                     $date = date('Y-m-d H:i:s');
                     $curr_date = date('Y-m-d');
 
+//                    var_dump($flag);die;
                     if($flag){
                         $category_limit = GoodsActivityLogic::shieldCategoryList($category_id);
                         $map1 = array(['supplier_id', '=', $supplier_id]);
@@ -192,25 +195,36 @@ class ThemeService
                             $ids[] = $item['id'];
                         }
                     }
-
-                    $lists = GoodsActivity::field('id,name,brandLogoUrl as image, startDate,endDate,is_index')
-                        ->when($flag, function($query) use($map1, $map2){
-                            $query->where(function($query) use($map1, $map2){
-                                $query->whereOr([$map1,$map2]);
-                            });
-                        })
-                        ->where('is_index', 1)
-                        ->when($ids, function($query) use($ids){
-                            $query->whereNotIn('id', $ids);
-                        })
-                        ->where('startDate', '<', $date)
-                        ->where('endDate', '>', $date)
-                        ->order('startDate',  'desc')
-                        ->limit($limit)
-                        ->select()
-                        ->toArray();
-                    $lists = array_merge($day_lists, $lists);
-                    $content[$moduleKey]['content']['data'] = $lists;
+                    $limit = $limit - count($ids);
+                    if($limit > 0){
+                        $lists = GoodsActivity::field('id,name,brandLogoUrl as image,startDate,endDate,is_index')
+                            ->when($flag, function($query) use($map1, $map2){
+                                $query->where(function($query) use($map1, $map2){
+                                    $query->whereOr([$map1,$map2]);
+                                });
+                            })
+                            ->where('is_index', 1)
+                            ->when($ids, function($query) use($ids){
+                                $query->whereNotIn('id', $ids);
+                            })
+                            ->where('startDate', '<', $date)
+                            ->where('endDate', '>', $date)
+                            ->order('startDate',  'desc')
+                            ->limit($limit)
+                            ->select()
+                            ->toArray();
+                        $day_lists = array_merge($day_lists, $lists);
+                    }
+//                    $date = date('Y-m-d H:i:s');
+                    foreach ($day_lists as &$item){
+                        $item['date'] = GoodsActivity::getDateDetail($date, $item['endDate']);
+                        $item['goods'] = Goods::where(['activity_id' => $item['id'],'status'=>GoodsEnum::STATUS_SELL])
+                            ->field('id,name,image,virtual_sales_num+sales_num as sales_num,min_price as sell_price,min_lineation_price as lineation_price')
+                            ->limit(3)
+                            ->select()
+                            ->toArray();
+                    }
+                    $content[$moduleKey]['content']['data'] = $day_lists;
                     break;
                 //选项卡组件 todo 选项卡的data是多维数据
                 case ThemePageEnum::TABS:

@@ -129,7 +129,7 @@ class GoodsValidate extends BaseValidate
         if('status' == $this->currentScene && 1 == $data['status'] ){
             return true;
         };
-
+        
         $activity_list = GoodsActivityLogic::activityInfo($value);
         if($activity_list){
             return '商品正在参加活动中，不允许修改';
@@ -218,7 +218,7 @@ class GoodsValidate extends BaseValidate
     public function updateAkcGoods($value,$rule,$data){
 
         $goods = new Goods;
-        $res = $goods::where(['code'=>$value])->update(['status'=>$rule['status']]);
+        $res =$goods::where(['code'=>$value])->update(['status'=>$rule['status']]);
     }
 
 

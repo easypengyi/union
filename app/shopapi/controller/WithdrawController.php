@@ -24,7 +24,7 @@ use app\shopapi\validate\WithdrawValidate;
  * Class WithdrawController
  * @package app\shopapi\controller
  */
-class WithdrawController extends BaseShopgetConfigController
+class WithdrawController extends BaseShopController
 {
     /**
      * @notes 获取提现配置

@@ -22,10 +22,16 @@ namespace app\adminapi\logic\goods;
 
 use app\common\enum\DefaultEnum;
 use app\common\enum\YesNoEnum;
+use app\common\model\DistributionGoods;
 use app\common\model\Goods;
 use app\common\model\GoodsActivity;
 use app\common\model\GoodsActivityLog;
 use app\common\model\GoodsActivityMsg;
+use app\common\model\GoodsCategoryIndex;
+use app\common\model\GoodsItem;
+use app\common\model\GoodsSpec;
+use app\common\model\GoodsSpecValue;
+use think\facade\Db;
 
 class GoodsActivityLogic
 {
@@ -74,6 +80,7 @@ class GoodsActivityLogic
         GoodsActivityLog::create(['activity_id'=> $params['id']]);
         return $GoodsActivity->save();
     }
+
     /**
      * @notes 获取当前时间内需要下载的商品
      * @return array
@@ -88,9 +95,28 @@ class GoodsActivityLogic
         }
         $where['is_down_goods'] = 1;
         $where['down_goods_status'] = 0;
-        $list = GoodsActivity::where($where)->field("id")->limit(5)->select()->toArray();;
+        $list = GoodsActivity::where($where)->field("id")->limit(1)->select()->toArray();;
         return $list;
     }
+
+    /**
+     * @notes 获取商品列表
+     * @return array
+     * @author cjhao
+     * @date 2021/7/26 10:41
+     */
+    public static function getActivityGoodsLists():array
+    {
+        $endDate = date('Y-m-d H:i:s');
+        $where[] = ['is_down_goods', '=', 1];
+        $where[] = ['down_goods_status', '=', 1];
+        $where[] = ['endDate', '>', $endDate];
+        $where[] = ['id', '=', '1724005460731703298'];
+        $list = GoodsActivity::where($where)->column("id");
+        return $list;
+    }
+
+
 
     /**
      * @notes 修改商品品牌显示状态
@@ -131,13 +157,37 @@ class GoodsActivityLogic
      */
     public function del($params)
     {
-        $res = GoodsActivity::destroy($params['id'], true);
-        if($res){
-            //删除对应的商品
-            Goods::destroy(['activity_id'=>$params['id']], true);
-            GoodsActivityMsg::destroy(['activity_id'=>$params['id']], true);
+        Db::startTrans();
+        try {
+            $res = GoodsActivity::destroy($params['id'], true);
+            if ($res) {
+                //删除对应的商品
+                $goods_ids = Goods::where('activity_id', $params['id'])->column('id');
+                $where[] = ['goods_id', 'in', $goods_ids];
+                $deleteIds = DistributionGoods::where($where)->column('id');
+                DistributionGoods::destroy($deleteIds, true);
+
+                //分类
+                $category_ids = GoodsCategoryIndex::where($where)->column('id');
+                GoodsCategoryIndex::destroy($category_ids, true);
+
+                $items = GoodsItem::where($where)->column('id');
+                GoodsItem::destroy($items, true);
+                $spec = GoodsSpec::where($where)->column('id');
+                GoodsSpec::destroy($spec, true);
+                $spec_value = GoodsSpecValue::where($where)->column('id');
+                GoodsSpecValue::destroy($spec_value, true);
+
+                Goods::destroy(['activity_id' => $params['id']], true);
+                GoodsActivityMsg::destroy(['activity_id' => $params['id']], true);
+            }
+            Db::commit();
+
+            return true;
+        }catch (\Exception $e) {
+            Db::rollback();
+            return $e->getMessage();
         }
-        return $res;
     }
 
     /**

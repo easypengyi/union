@@ -137,7 +137,7 @@ class CouponLogic
      */
     public static function goodsCoupon(int $goodsId,int $userId = 0):array
     {
-        $couponList = Coupon::where(['get_type'=>CouponEnum::GET_TYPE_USER,'status' => CouponEnum::COUPON_STATUS_CONDUCT])
+        $couponList = Coupon::where(['get_type'=>CouponEnum::GET_TYPE_USER,'status' => CouponEnum::COUPON_STATUS_CONDUCT, 'show_type'=> 1])
                 ->select();
         $goodsCoupon = [];
         $myCouponIds = [];

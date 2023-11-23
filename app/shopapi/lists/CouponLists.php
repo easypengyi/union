@@ -26,7 +26,7 @@ use app\common\model\Coupon;
 use app\common\model\CouponList;
 use app\common\service\TimeService;
 
-class CouponLists extends BaseShopDataLists implements ListsSearchInterface
+class CouponLists extends BaseShopDataLists
 {
     /**
      * @notes 优惠券列表搜索条件
@@ -34,9 +34,15 @@ class CouponLists extends BaseShopDataLists implements ListsSearchInterface
      * @author 张无忌
      * @date 2021/7/29 18:13
      */
-    public function setSearch(): array
+    public function setWhere(): array
     {
-        return [];
+        $where = [];
+        // 关键字搜索
+        if (isset($this->params['coupon_id']) && !empty($this->params['coupon_id'])) {
+            $where[] = ['id', '=', $this->params['coupon_id']];
+        }
+
+        return $where;
     }
 
     /**
@@ -50,10 +56,12 @@ class CouponLists extends BaseShopDataLists implements ListsSearchInterface
      */
     public function lists(): array
     {
+        $where = $this->setWhere();
         $model = new Coupon();
         $lists = $model->field(true)
             ->where(['status' => CouponEnum::COUPON_STATUS_CONDUCT])
             ->where(['get_type' => CouponEnum::GET_TYPE_USER])
+            ->where($where)
             ->withAttr('is_available', function ($value, $data) {
                 unset($value);
                 switch ($data['get_num_type']) {
@@ -173,9 +181,11 @@ class CouponLists extends BaseShopDataLists implements ListsSearchInterface
      */
     public function count(): int
     {
+        $where = $this->setWhere();
         $model = new Coupon();
         return $model->field(true)
             ->where(['status' => CouponEnum::COUPON_STATUS_CONDUCT])
+            ->where($where)
             ->count();
     }
 }

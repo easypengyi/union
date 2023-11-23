@@ -77,6 +77,24 @@ class GoodsPushLogic extends BaseLogic
     }
 
     /**
+     * 添加素材
+     *
+     * @param $params
+     * @return bool
+     */
+    public function edit($params)
+    {
+        $goods_msg = GoodsPushMsg::find($params['id']);
+        $goods_msg->type = $params['type'];
+        $goods_msg->content = $params['content'];
+        $goods_msg->times = $params['times'];
+        $goods_msg->push_id = $params['push_id'];
+        $goods_msg->sort = (isset($params['sort']) && !empty($params['sort'])) ? $params['sort'] : DefaultEnum::SORT;
+
+        return $goods_msg->save();
+    }
+
+    /**
      * 删除素材
      *
      * @param $params

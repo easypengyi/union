@@ -268,6 +268,7 @@ class AkcApi extends Command
         //$dt['activeIds'][0] ='1394579972933394434';
         $dt['activeModel'] = 1; //预告
         $activity = $this->curlUrl('activity', $dt);
+//        var_dump($activity);die;
         $total = $activity['total'];
         $pageTotal = ceil($total/$this->pageSize);
         $data = [];
@@ -278,6 +279,7 @@ class AkcApi extends Command
             $dt['pageSize'] = $this->pageSize;
             $dt['activeModel'] = 1; //预告
             $activity = $this->curlUrl('activity', $dt);
+
             $res = $activity['data'];
 
             for ($i=0;$i<count($res);$i++) {
@@ -297,7 +299,7 @@ class AkcApi extends Command
                     ];
                     $detail = $this->curlUrl('activityDetail', $params);
                     if($detail['resultCode'] == 999999){
-                        $dt['waterMarkLicense'] = $detail['data']['activity']['waterMarkLicense'];
+                        $dt['waterMarkLicense'] = isset($detail['data']['activity']['waterMarkLicense']) ? $detail['data']['activity']['waterMarkLicense'] : null;
                     }
 
                     $dt['activity_type'] =0;

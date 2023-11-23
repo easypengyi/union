@@ -473,7 +473,7 @@ class Goods extends BaseModel
                     //爱库存商品单独计算
                     $is_new = isset($data['is_new']) ? $data['is_new'] : 0;
                     if($is_new == 1){
-                        $money = round($value['first_ratio'] * $data['profit'] / 100, 2);
+                        $money = round($value['first_ratio'] * ($data['sell_price'] - $data['settlementPrice'] ) / 100, 2);
                     }else{
                         $money = round($value['first_ratio'] * $data['sell_price'] / 100, 2);
                     }

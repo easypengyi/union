@@ -63,6 +63,18 @@ class GoodsPushController extends BaseAdminController
     }
 
     /**
+     * 添加素材
+     *
+     * @return \think\response\Json
+     */
+    public function edit()
+    {
+        $params = (new GoodsPushMsgValidate())->post()->goCheck('edit');
+        (new GoodsPushLogic())->edit($params);
+        return $this->success('修改成功',[],1,1);
+    }
+
+    /**
      * 素材列表
      *
      * @return \think\response\Json

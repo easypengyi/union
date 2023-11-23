@@ -642,7 +642,7 @@ class AfterSaleLogic extends BaseLogic
         $returnPhone = '';
         if(!empty($detail['applicationNo'])){
             $data['liveId'] = $detail['applicationActivity'];
-            $data['liveId'] = '1582942271314796545';
+//            $data['liveId'] = '1582942271314796545';
             //获取退货地址
             $akcLogic = new AkcLogic;  //爱库存
             $res = $akcLogic->queryAfterSaleAdd($data);

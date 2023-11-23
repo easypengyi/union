@@ -67,7 +67,8 @@ class TeamEnd extends Command
             (new TeamActivity())->whereIn('id', $team_ids)->update(['status' => TeamEnum::TEAM_STATUS_END, 'update_time' => $time]);
 
             // 2、找出拼团中&&拼团有效期结束的拼团记录
-
+            $map1 = array(['invalid_time', '<=', $time], ['status', '=', 0]);
+            $map2 = array(['team_id', 'in', $team_ids], ['status', '=', 0]);
             $teamFound1 = (new TeamFound())->withoutField('goods_snap')->whereOr([$map1, $map2])->select()->toArray();
             $teamFound2 = (new TeamFound())->alias('TF')
                 ->withoutField('goods_snap')

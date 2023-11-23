@@ -31,7 +31,4 @@ class GoodsPushMsg extends BaseModel
     use SoftDelete;
 
     protected $deleteTime = 'delete_time';
-
-
-
 }

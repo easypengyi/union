@@ -72,15 +72,15 @@ class GroupOrderGoodsLogic extends BaseLogic
                 // 商品未参与分销
                 continue;
             }
-
             if($item['room_id'] > 0){
                 //获取群对应的运营商信息
                 $userInfo = self::userInfo($item['room_id']);
-                if($userInfo['is_freeze']) {
+                if(!isset($userInfo['is_freeze']) || $userInfo['is_freeze']) {
                     // 上级不是分销会员 或 分销资格已冻结
                     continue;
                 }
-                $rate = self::getRatio($item, $userInfo['level_id']);
+                $rate = self::getRatio($item, $userInfo['level_id'], $goodsDistribution);
+//                var_dump($item, $userInfo['level_id'], $goodsDistribution, $rate);die;
                 $userInfo['ratio'] = $rate;
                 $userInfo['level'] = DistributionConfigEnum::LEVEL_TWO;
                 self::addGroupOrderGoods($item, $userInfo);
@@ -180,17 +180,29 @@ class GroupOrderGoodsLogic extends BaseLogic
      * @param $level_id
      * @return float|int
      */
-    public static function getRatio($goods, $level_id)
+    public static function getRatio($goods, $level_id, $goodsDistribution)
     {
-        //商品二级佣金比例
-        $ratioArr = DistributionGoods::field('first_ratio,second_ratio,self_ratio')
-            ->where([
-                'goods_id' => $goods['goods_id'],
-                'item_id' => $goods['item_id'],
-                'level_id' => 1
-            ])
-            ->findOrEmpty()
-            ->toArray();
+        // 按分销会员等级对应的比例
+        if($goodsDistribution['rule'] == DistributionGoodsEnum::RULE_LEVEL) {
+            $ratioArr = DistributionLevel::field('first_ratio,second_ratio,self_ratio')
+                ->where('id', 1)
+                ->findOrEmpty()
+                ->toArray();
+        }
+
+        // 单独设置的比例
+        if($goodsDistribution['rule'] == DistributionGoodsEnum::RULE_CUSTOMIZE) {
+            //商品二级佣金比例
+            $ratioArr = DistributionGoods::field('first_ratio,second_ratio,self_ratio')
+                ->where([
+                    'goods_id' => $goods['goods_id'],
+                    'item_id' => $goods['item_id'],
+                    'level_id' => 1
+                ])
+                ->findOrEmpty()
+                ->toArray();
+        }
+//        var_dump($ratioArr);
         $rate = 0;
         if(!empty($ratioArr['second_ratio']) && $ratioArr['second_ratio'] > 0){
             $rate = $ratioArr['second_ratio']/100;
@@ -204,13 +216,13 @@ class GroupOrderGoodsLogic extends BaseLogic
         if(!empty($level['rate']) && $level['rate'] > 0){
             $rate = $rate * ($level['rate'])/100;
         }
-
+//        var_dump($level);
         //结算设置的佣金比例
         $group_rate = DistributionConfig::where('key', 'group_rate')->value('value');
         if(!empty($group_rate) && $group_rate>0){
             $rate = $rate * ($group_rate/100);
         }
-
+//        var_dump($group_rate);
         return $rate * 100;
     }
 

@@ -167,9 +167,9 @@ class AfterSaleLists extends BaseAdminDataLists implements ListsExtendInterface,
 
         foreach($lists as &$item) {
             $item['avatar'] = FileService::getFileUrl($item['avatar']);
-//            if(!empty($item['applicationNo']) && $item['refund_method'] == 1){
-//                $item['refund_method_desc'] =  '漏发退款';
-//            }
+            if(!empty($item['applicationNo']) && $item['refund_method'] == 1){
+                $item['refund_method_desc'] =  '漏发退款';
+            }
         }
 
         return $lists;

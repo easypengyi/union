@@ -209,12 +209,17 @@ class AfterSaleService
 
         foreach($orderGoods as $item) {
             $goodsItem = GoodsItem::findOrEmpty($item['item_id']);
-            $goodsItem->stock = $goodsItem->stock + $item['goods_num'];
-            $goodsItem->save();
+
+            if(!$goodsItem->isEmpty()){
+                $goodsItem->stock = $goodsItem->stock + $item['goods_num'];
+                $goodsItem->save();
+            }
 
             $goods = Goods::findOrEmpty($item['goods_id']);
-            $goods->total_stock = $goods->total_stock + $item['goods_num'];
-            $goods->save();
+            if(!$goods->isEmpty()){
+                $goods->total_stock = $goods->total_stock + $item['goods_num'];
+                $goods->save();
+            }
         }
     }
 

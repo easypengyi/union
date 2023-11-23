@@ -19,6 +19,8 @@
 namespace app\adminapi\logic\user;
 use app\adminapi\logic\distribution\DistributionLogic;
 use app\common\{logic\BaseLogic,
+    logic\DistributionOrderGoodsLogic,
+    logic\GroupOrderGoodsLogic,
     model\User,
     model\Order,
     enum\PayEnum,
@@ -166,6 +168,12 @@ class UserLogic extends BaseLogic
      */
     public function detail(int $userId)
     {
+//        GroupOrderGoodsLogic::add(41, 17);
+
+
+//        $res = DistributionOrderGoodsLogic::add(27);
+//        var_dump($res);die;
+
         $user = User::with('userLevel')
                 ->field('id,sn,nickname,avatar,real_name,sex,mobile,birthday,code,level,create_time,login_time,total_order_amount,total_order_num,user_money,user_earnings,user_money+user_earnings as total_user_money,user_integral,disable,register_source,inviter_id,first_leader')
                 ->find($userId);

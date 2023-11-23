@@ -227,7 +227,7 @@ class DistributionSettlement extends Command
      * @author Tab
      * @date 2021/8/5 11:36
      */
-    public function incUserEarning($item)
+    public static function incUserEarning($item)
     {
         $user = User::findOrEmpty($item['user_id']);
         $user->user_earnings = is_null($user->user_earnings) ? 0 : $user->user_earnings;

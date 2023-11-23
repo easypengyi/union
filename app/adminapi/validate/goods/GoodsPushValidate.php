@@ -53,7 +53,7 @@ class GoodsPushValidate extends BaseValidate
     }
 
     /**
-     * 验证推送信息
+     *
      *
      * @param $value
      * @param $rule
