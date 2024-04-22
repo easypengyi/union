@@ -20,20 +20,24 @@
 namespace app\adminapi\logic\goods;
 
 
+use akc\Akc;
 use app\common\enum\DefaultEnum;
 use app\common\enum\YesNoEnum;
+use app\common\logic\BaseLogic;
 use app\common\model\DistributionGoods;
 use app\common\model\Goods;
 use app\common\model\GoodsActivity;
 use app\common\model\GoodsActivityLog;
+use app\common\model\GoodsActivityMany;
 use app\common\model\GoodsActivityMsg;
+use app\common\model\GoodsActivityPush;
 use app\common\model\GoodsCategoryIndex;
 use app\common\model\GoodsItem;
 use app\common\model\GoodsSpec;
 use app\common\model\GoodsSpecValue;
 use think\facade\Db;
 
-class GoodsActivityLogic
+class GoodsActivityLogic extends BaseLogic
 {
     /**
      * @notes 添加商品分类
@@ -71,13 +75,68 @@ class GoodsActivityLogic
         $GoodsActivity->push_type = isset($params['push_type']) ? $params['push_type'] : '';
         $GoodsActivity->push_status = isset($params['push_status']) ? $params['push_status'] : '';
         $GoodsActivity->is_index = isset($params['is_index']) ? $params['is_index'] : '';
-        $GoodsActivity->push_time = !empty($params['push_time']) ? $params['push_time'] : null;
+//        $GoodsActivity->push_time = !empty($params['push_time']) ? $params['push_time'] : null;
         $GoodsActivity->supplier_id = isset($params['supplier_id']) ? $params['supplier_id'] : '';
         $GoodsActivity->category_id = isset($params['category_id']) ? $params['category_id']: '';
         $GoodsActivity->is_new = isset($params['is_new']) ? $params['is_new']: 1;
         $GoodsActivity->waterMarkLicense = isset($params['waterMarkLicense']) ? $params['waterMarkLicense']: '';
+        $GoodsActivity->title = $params['title']??'';
 
         GoodsActivityLog::create(['activity_id'=> $params['id']]);
+        //设置不同的推送时间
+        if(!empty($params['push_list'])){
+            $insert_data = [];
+            foreach ($params['push_list'] as $item){
+                if(empty($item['push_time'])){
+                    continue;
+                }
+                $industry_name = '';
+                $industry_level_name = '所有';
+                foreach ($item['industry_list'] as $industry){
+                    if($industry['id'] == $item['industry_id']){
+                        $industry_name = $industry['name'];
+                        break;
+                    }
+                }
+                foreach ($item['industry_level_list'] as $level){
+                    if($level['id'] == $item['industry_level_id']){
+                        $industry_level_name = $level['name'];
+                        break;
+                    }
+                }
+                $insert_data[] = [
+                    'activity_id'=> $params['id'],
+                    'industry_id'=> $item['industry_id'],
+                    'industry_name'=> $industry_name,
+                    'industry_level_id'=> $item['industry_level_id'],
+                    'industry_level_name'=> $industry_level_name,
+                    'push_time'=> $item['push_time'],
+                    'create_time'=> time()
+                ];
+            }
+            GoodsActivityPush::insertAll($insert_data);
+        }
+
+        //设置不同的推送时间
+        if(!empty($params['activity_list'])){
+            $ids = GoodsActivityMany::where('activity_id', $params['id'])->column('id');
+            GoodsActivityMany::destroy($ids, true);
+            $insert_data = [];
+            foreach ($params['activity_list'] as $item){
+                if(empty($item['has_activity_id'])){
+                    continue;
+                }
+                $insert_data[] = [
+                    'activity_id'=> $params['id'],
+                    'has_activity_id'=> $item['has_activity_id'],
+                    'has_activity_title'=> $item['has_activity_title'],
+                    'create_time'=> time()
+                ];
+            }
+            GoodsActivityMany::insertAll($insert_data);
+        }
+
+
         return $GoodsActivity->save();
     }
 
@@ -110,8 +169,9 @@ class GoodsActivityLogic
         $endDate = date('Y-m-d H:i:s');
         $where[] = ['is_down_goods', '=', 1];
         $where[] = ['down_goods_status', '=', 1];
+//        $where[] = ['startDate', '>', $endDate];
         $where[] = ['endDate', '>', $endDate];
-        $where[] = ['id', '=', '1724005460731703298'];
+//        $where[] = ['id', '=', '1742818973816115202'];
         $list = GoodsActivity::where($where)->column("id");
         return $list;
     }
@@ -198,11 +258,30 @@ class GoodsActivityLogic
      */
     public function detail(int $id)
     {
+//        $ack = new Akc();
+//        $id = "1739220331559297025";
+//        $info = $ack->activityList($id);
+//        var_dump($id, $info);die;
+
+
         $info = GoodsActivity::withoutField('create_time,update_time')
             ->find($id)
             ->toArray();
 
         $info['categoryId'] = [$info['categoryId']];
+        $push_list = [];
+        //推送时间
+        if($info['push_status'] == 1){
+            $push_list = GoodsActivityPush::field('industry_id,industry_level_id,push_time')
+                ->where('activity_id', $id)->order('push_time','asc')->select()->toArray();
+        }
+
+        //关联专场
+        $activity_list = GoodsActivityMany::field('has_activity_id,has_activity_title')
+            ->where('activity_id', $id)->select()->toArray();
+
+        $info['push_list'] = $push_list;
+        $info['activity_list'] = $activity_list;
         return $info;
     }
 
@@ -225,17 +304,91 @@ class GoodsActivityLogic
         $GoodsActivity->push_type = isset($params['push_type']) ? $params['push_type'] : '';
         $GoodsActivity->push_status = isset($params['push_status']) ? $params['push_status'] : '';
         $GoodsActivity->is_index = isset($params['is_index']) ? $params['is_index'] : '';
-        $GoodsActivity->push_time = !empty($params['push_time']) ? $params['push_time'] : null;
+//        $GoodsActivity->push_time = !empty($params['push_time']) ? $params['push_time'] : null;
         $GoodsActivity->supplier_id = isset($params['supplier_id']) ? $params['supplier_id'] : '';
         $GoodsActivity->category_id = $params['category_id'];
         $GoodsActivity->previewInformation = $params['previewInformation'];
+        $GoodsActivity->title = $params['title']??'';
 
         //爱库存同步一下
         if(!empty($params['supplier_id']) && $GoodsActivity->is_new == 1){
             Goods::where('activity_id', $params['id'])->update(['supplier_id'=> $params['supplier_id']]);
         }
 
+        //设置不同的推送时间
+        if(!empty($params['push_list'])){
+            $ids = GoodsActivityPush::where('activity_id', $params['id'])->column('id');
+            GoodsActivityPush::destroy($ids, true);
+            $insert_data = [];
+            foreach ($params['push_list'] as $item){
+                if(empty($item['push_time'])){
+                    continue;
+                }
+                $industry_name = '';
+                $industry_level_name = '所有';
+                foreach ($item['industry_list'] as $industry){
+                    if($industry['id'] == $item['industry_id']){
+                        $industry_name = $industry['name'];
+                        break;
+                    }
+                }
+                foreach ($item['industry_level_list'] as $level){
+                    if($level['id'] == $item['industry_level_id']){
+                        $industry_level_name = $level['name'];
+                        break;
+                    }
+                }
+                $insert_data[] = [
+                    'activity_id'=> $params['id'],
+                    'industry_id'=> $item['industry_id'],
+                    'industry_name'=> $industry_name,
+                    'industry_level_id'=> $item['industry_level_id'],
+                    'industry_level_name'=> $industry_level_name,
+                    'push_time'=> $item['push_time'],
+                    'create_time'=> time()
+                ];
+            }
+            GoodsActivityPush::insertAll($insert_data);
+        }
+
+        //设置不同的推送时间
+        if(!empty($params['activity_list'])){
+            $ids = GoodsActivityMany::where('activity_id', $params['id'])->column('id');
+            GoodsActivityMany::destroy($ids, true);
+            $insert_data = [];
+            foreach ($params['activity_list'] as $item){
+                if(empty($item['has_activity_id'])){
+                    continue;
+                }
+                $insert_data[] = [
+                    'activity_id'=> $params['id'],
+                    'has_activity_id'=> $item['has_activity_id'],
+                    'has_activity_title'=> $item['has_activity_title'],
+                    'create_time'=> time()
+                ];
+            }
+            GoodsActivityMany::insertAll($insert_data);
+        }
+
         return $GoodsActivity->save();
+    }
+
+    /**
+     * 获取商家行业和层级
+     *
+     * @return array
+     */
+    public static function shopIndustry()
+    {
+        //获取商家行业
+        $params = [];
+        $res = self::reqPost('/shop/task/shopIndustry', $params);
+        $list = [];
+        if($res['code'] == 1){
+            $list = $res['data']['list'];
+        }
+
+        return $list;
     }
 
 }

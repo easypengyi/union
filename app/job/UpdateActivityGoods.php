@@ -53,6 +53,10 @@ class UpdateActivityGoods
         Log::info('更新专场活动商品********商品总数量:'.$total);
         $pageTotal = ceil($total/$pageSize);
         Log::info('更新专场活动商品********商品总页数:'.$pageTotal);
+
+        $goods_map = Goods::where('activity_id', $activity_id)
+            ->column('id', 'code');
+//        Log::info('更新专场活动商品********商品:'.json_encode($goods_map));
         $num = 0;
         for ($k=0; $k < $pageTotal; $k++) {
             $params = [
@@ -67,6 +71,7 @@ class UpdateActivityGoods
                 continue;
             }
             $productList = $goods['data']['productList'];
+//            Log::info('更新专场活动商品********爱库存商品返回:'.json_encode($productList));
             foreach ($productList as $product)
             {
                 if ($product['status'] == 0){
@@ -83,14 +88,12 @@ class UpdateActivityGoods
                 $flag = false;
                 $specPriceArr = [];
                 $specLineationPriceArr = [];
-                $goods_id = Goods::where('activity_id', $activity_id)
-                    ->where('code', $product['productId'])
-                    ->value('id');
-                if(empty($goods_id)){
+
+                if(!isset($goods_map[$product['productId']])){
                     Log::info('更新专场活动商品********未找到商品信息');
                     continue;
                 }
-
+                $goods_id = $goods_map[$product['productId']];
                 $has_sku_list = GoodsItem::where('goods_id', $goods_id)->column('sell_price','skuId');
                 foreach ($skuList as $sku){
                     if(isset($has_sku_list[$sku['skuId']])){

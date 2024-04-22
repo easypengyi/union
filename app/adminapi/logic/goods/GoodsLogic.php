@@ -310,7 +310,7 @@ class GoodsLogic
                     'weight'            => $specValueList['weight'],
                     'bar_code'          => $specValueList['bar_code'],
                     //akc
-                    'skuId'         => $specValueList['skuId'],
+                    'skuId'         => $specValueList['skuId'] ?? null,
                 ];
 
             }
@@ -348,7 +348,7 @@ class GoodsLogic
                     'weight'           => $specValueList['weight'],
                     'bar_code'         => $specValueList['bar_code'],
                     //akc
-                    'skuId'         => $specValueList['skuId'],
+                    'skuId'         => $specValueList['skuId'] ?? null,
                 ]);
 
             }else{
@@ -383,7 +383,7 @@ class GoodsLogic
                     'weight'           => $specValueList['weight'],
                     'bar_code'         => $specValueList['bar_code'],
                     //akc
-                    'skuId'         => $specValueList['skuId'],
+                    'skuId'         => $specValueList['skuId'] ?? null,
                 ];
                 (new GoodsItem())->save($specValueData);
 
@@ -453,7 +453,7 @@ class GoodsLogic
                         'weight'            => $specValueList['weight'],
                         'bar_code'          => $specValueList['bar_code'],
                         //akc
-                        'skuId'         => $specValueList['skuId'],
+                        'skuId'         => $specValueList['skuId'] ?? null,
                     ];
 
                 }
@@ -541,7 +541,7 @@ class GoodsLogic
                         'weight'            => $specValueList['weight'],
                         'bar_code'          => $specValueList['bar_code'],
                         //akc
-                        'skuId'         => $specValueList['skuId'],
+                        'skuId'         => $specValueList['skuId'] ?? null,
                     ];
                     //更新规格
                     if($specValueList['id'] > 0){
@@ -603,9 +603,22 @@ class GoodsLogic
             ->order('sort','asc')->select();
         $categoryList = GoodsCategory::field('id,pid,name')->order('sort','asc')->select()->toArray();
         $categoryList = linear_to_tree($categoryList,'sons');
+//        $categoryList = [];
 
         if('all' !== $type){
+            $shopIndustry = GoodsActivityLogic::shopIndustry();
+            //专场列表
+            $day_lists = GoodsActivity::field('id as value,name')
+                ->where('startDate', '<', $date)
+                ->where('endDate', '>', $date)
+                ->order('startDate',  'asc')
+                ->select()
+                ->toArray();
+
+
             return [
+                'industry_list' => $shopIndustry,
+                'activity_list' => $day_lists,
                 'supplier_list'     => $supplierList,
                 'category_list'     => $categoryList,
             ];

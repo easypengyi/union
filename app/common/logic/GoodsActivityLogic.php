@@ -23,6 +23,7 @@ use app\common\enum\ActivityEnum;
 use app\common\enum\GoodsEnum;
 use app\common\model\Goods;
 use app\common\model\GoodsActivity;
+use app\common\model\GoodsActivityPush;
 use app\common\model\GoodsCategory;
 use app\common\model\GoodsCategoryIndex;
 use app\common\model\GoodsSupplier;
@@ -119,7 +120,10 @@ class GoodsActivityLogic extends BaseLogic
      *
      */
     public static function pushList($params){
-
+        //设置了商家行业
+        if(empty($params['industry_id'])){
+            return [];
+        }
         $supplier = GoodsSupplier::where('name', $params['supplier_name'])->find();
         $flag = false;
         $category_limit = [];
@@ -127,8 +131,31 @@ class GoodsActivityLogic extends BaseLogic
             $category_limit = self::shieldCategoryList($params['category_ids']);
             $flag = true;
         }
+        if(is_null($supplier)){
+            return [];
+        }
         $map1 = array(['supplier_id', '=', $supplier['id']]);
         $map2 = array(['category_id', 'notIn', $category_limit]);
+
+        $date = date('Y-m-d H:i:s');
+        $start_date = date('Y-m-d H:i:s', time() - 3600);
+        $activity_lists = GoodsActivityPush::field('activity_id,industry_level_id')
+            ->where('industry_id', $params['industry_id'])
+            ->where('push_time', '>', $start_date)
+            ->where('push_time', '<', $date)
+            ->select()->toArray();
+        $activity_ids = [];
+        $industry_level_id = $params['industry_level_id'] ?? 0;
+        foreach ($activity_lists as $ac){
+            //推送所有
+            if($ac['industry_level_id'] <= 0 || empty($industry_level_id)){
+                $activity_ids[] = $ac['activity_id'];
+            }
+            if($industry_level_id > 0 && $ac['industry_level_id'] == $industry_level_id){
+                $activity_ids[] = $ac['activity_id'];
+            }
+        }
+//        var_dump($activity_ids);die;
 
         $date = date('Y-m-d H:i:s');
         //获取专场内容
@@ -136,17 +163,14 @@ class GoodsActivityLogic extends BaseLogic
             ->with(['msg'=>function($query){
                 $query->field('id,activity_id,type,content,sort,times')->order('sort', 'asc');
             }])
-//            ->where('supplier_id', $supplier['id'])
-//            ->when($flag, function($query) use($category_id){
-//                $query->where('category_id', '<>', $category_id);
-//            })
             ->when($flag, function($query) use($map1, $map2){
                 $query->where(function($query) use($map1, $map2){
                     $query->whereOr([$map1,$map2]);
                 });
             })
+            ->whereIn('id', $activity_ids)
             ->where('endDate', '>', $date)
-            ->where('push_time', '<', $date)
+//            ->where('push_time', '<', $date)
             ->where('push_status', 1)
 //            ->where('is_push', 0)
             ->order(['sort'=>'asc','id'=>'asc'])

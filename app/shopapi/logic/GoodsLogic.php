@@ -58,6 +58,7 @@ class GoodsLogic extends BaseLogic
             ->field('id,name,code,image,video,video_cover,total_stock,click_num,virtual_sales_num+sales_num as sales_num,spec_type,content,poster,is_new')
             ->append(['goods_image','commission_price'])
             ->find($id);
+//        var_dump($goods);die;
         if(empty($goods)){
             self::$error = '商品已下架！';
             return false;

@@ -881,7 +881,7 @@ class OrderLogic extends BaseLogic
             ->join('order_goods og', 'o.id = og.order_id')
             ->join('goods g', 'og.goods_id = g.id')
             ->join('delivery d', 'd.order_id = o.id')
-            ->field('g.image,o.order_status,d.express_name,d.invoice_no,o.total_num,d.contact,d.mobile,o.address,o.confirm_take_time,d.send_type,d.express_id,o.express_time,o.pay_time,o.create_time')
+            ->field('g.image,o.orderId,o.order_status,d.express_name,d.invoice_no,o.total_num,d.contact,d.mobile,o.address,o.confirm_take_time,d.send_type,d.express_id,o.express_time,o.pay_time,o.create_time')
             ->append(['delivery_address'])
             ->where(['o.id'=>$params['id'],'o.user_id'=>$params['user_id']])
             ->find()
@@ -897,37 +897,46 @@ class OrderLogic extends BaseLogic
                 'tips' => '商品已出库',
                 'time' => $order['express_time'],
             ];
+            if(empty($order['orderId'])) {
+                // 获取物流查询配置, 发起查询申请
+                $express_type = ConfigService::get('logistics_config', 'express_type', '');
+                $express_bird = unserialize(ConfigService::get('logistics_config', 'express_bird', ''));
+                $express_hundred = unserialize(ConfigService::get('logistics_config', 'express_hundred', ''));
 
-            // 获取物流查询配置, 发起查询申请
-            $express_type = ConfigService::get('logistics_config', 'express_type', '');
-            $express_bird = unserialize(ConfigService::get('logistics_config', 'express_bird', ''));
-            $express_hundred = unserialize(ConfigService::get('logistics_config', 'express_hundred', ''));
+                if (!empty($express_type) && !empty($express_bird) && !empty($express_hundred)) {
 
-            if (!empty($express_type) && !empty($express_bird) && !empty($express_hundred)) {
+                    $express_field = 'code';
+                    if ($express_type === 'express_bird') {
+                        $expressage = (new Kdniao($express_bird['ebussiness_id'], $express_bird['app_key']));
+                        $express_field = 'codebird';
+                    } elseif ($express_type === 'express_hundred') {
+                        $expressage = (new Kd100($express_hundred['customer'], $express_hundred['app_key']));
+                        $express_field = 'code100';
+                    }
 
-                $express_field = 'code';
-                if($express_type === 'express_bird') {
-                    $expressage = (new Kdniao($express_bird['ebussiness_id'], $express_bird['app_key']));
-                    $express_field = 'codebird';
-                } elseif($express_type === 'express_hundred') {
-                    $expressage = (new Kd100($express_hundred['customer'], $express_hundred['app_key']));
-                    $express_field = 'code100';
+                    //快递编码
+                    $express_code = Express::where('id', $order['express_id'])->value($express_field);
+
+                    //获取物流轨迹
+                    if ($express_code === 'SF' && $express_type === 'express_bird') {
+                        $expressage->logistics($express_code, $order['invoice_no'], substr($order['address']->mobile, -4));
+                    } else {
+                        $expressage->logistics($express_code, $order['invoice_no']);
+                    }
+
+                    $traces = $expressage->logisticsFormat();
+                    if ($traces != false) {
+                        foreach ($traces as &$item) {
+                            $item = array_values(array_unique($item));
+                        }
+                    }
                 }
-
-                //快递编码
-                $express_code = Express::where('id',$order['express_id'])->value($express_field);
-
-                //获取物流轨迹
-                if ($express_code === 'SF' && $express_type === 'express_bird') {
-                    $expressage->logistics($express_code, $order['invoice_no'], substr($order['address']->mobile,-4));
-                }else {
-                    $expressage->logistics($express_code, $order['invoice_no']);
-                }
-
-                $traces = $expressage->logisticsFormat();
-                if ($traces != false) {
-                    foreach ($traces as &$item) {
-                        $item = array_values(array_unique($item));
+            }else{
+                $res = (new Akc())->orderTrack($order['orderId']);
+                if($res['resultCode'] == 999999 && !empty($res['data'])){
+                    $lists = $res['data'][0]['traceItemList'];
+                    foreach ($lists as $item){
+                        $traces[] = [$item['time'], $item['content']];
                     }
                 }
             }

@@ -36,7 +36,7 @@ class GoodsActivityLists extends BaseAdminDataLists implements ListsSearchInterf
     {
         $where = [];
         if(!empty($this->params['name'])){
-            $where[] = ['name', 'like', '%'.$this->params['name'].'%'];
+            $where[] = ['name|id', 'like', '%'.$this->params['name'].'%'];
         }
 
         if(!empty($this->params['is_index'])){
@@ -62,13 +62,21 @@ class GoodsActivityLists extends BaseAdminDataLists implements ListsSearchInterf
     public function lists(): array
     {
         $lists = GoodsActivity::field('*,id as sid,brandLogoUrl as image')
-            ->with(['supplier'])
+            ->with(['supplier', 'pushList'])
             ->where($this->setSearch())
             ->limit($this->limitOffset, $this->limitLength)
             ->order(['sort'=>'asc','id'=>'desc'])
             ->append(['is_show_desc'])
             ->select()
             ->toArray();
+
+        foreach ($lists as &$item){
+            $content = '';
+            foreach ($item['pushList'] as $push){
+                $content .=  $push['industry_name']."|".$push['industry_level_name']."|".$push['push_time'] ."\n";
+            }
+            $item['content'] = $content;
+        }
 
         return $lists;
     }

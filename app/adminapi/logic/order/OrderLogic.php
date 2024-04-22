@@ -20,6 +20,7 @@
 namespace app\adminapi\logic\order;
 
 
+use akc\Akc;
 use app\common\cache\YlyPrinterCache;
 use app\common\enum\AfterSaleLogEnum;
 use app\common\enum\DeliveryEnum;
@@ -637,54 +638,67 @@ class OrderLogic extends BaseLogic
             ->with(['order_goods' => function($query){
                 $query->field('id,order_id,goods_snap,goods_name,goods_price,discount_price,round(total_pay_price / goods_num,2) as pay_price,goods_num,total_pay_price')->append(['goods_image','spec_value_str'])->hidden(['goods_snap']);
             }])
-            ->field('o.id,o.express_time,d.send_type,d.express_name,d.invoice_no,o.express_status,d.express_id,o.address')
+            ->field('o.id,o.orderId,o.express_time,d.send_type,d.express_name,d.invoice_no,o.express_status,d.express_id,o.address')
             ->where('o.id',$params['id'])
             ->find()
             ->toArray();
 
         //发货方式
         $order['send_type_desc'] = DeliveryEnum::getSendTypeDesc($order['send_type']);
-
         if ($order['send_type'] == DeliveryEnum::NO_EXPRESS) {
             $order['traces'] = ['无需物流'];
             return $order;
         }
 
-        //查询物流信息
-        $express_type = ConfigService::get('logistics_config', 'express_type', '');
-        $express_bird = unserialize(ConfigService::get('logistics_config', 'express_bird', ''));
-        $express_hundred = unserialize(ConfigService::get('logistics_config', 'express_hundred', ''));
-
-        if (empty($express_type) || $order['express_status'] != DeliveryEnum::SHIPPED) {
-            $order['traces'] = ['暂无物流信息'];
-            return $order;
-        }
-
-        //快递配置设置为快递鸟时
-        if($express_type === 'express_bird') {
-            $expressage = (new Kdniao($express_bird['ebussiness_id'], $express_bird['app_key']));
-            $express_field = 'codebird';
-        } elseif($express_type === 'express_hundred') {
-            $expressage = (new Kd100($express_hundred['customer'], $express_hundred['app_key']));
-            $express_field = 'code100';
-        }
-
-        //快递编码
-        $express_code = Express::where('id',$order['express_id'])->value($express_field);
-
         //获取物流轨迹
-        if ($express_code === 'SF' && $express_type === 'express_bird') {
-            $expressage->logistics($express_code, $order['invoice_no'], substr($order['address']->mobile,-4));
-        }else {
-            $expressage->logistics($express_code, $order['invoice_no']);
-        }
+        if(empty($order['orderId'])){
+            //查询物流信息
+            $express_type = ConfigService::get('logistics_config', 'express_type', '');
+            $express_bird = unserialize(ConfigService::get('logistics_config', 'express_bird', ''));
+            $express_hundred = unserialize(ConfigService::get('logistics_config', 'express_hundred', ''));
 
-        $order['traces'] = $expressage->logisticsFormat();
-        if ($order['traces'] == false) {
-            $order['traces'] = ['暂无物流信息'];
-        } else {
-            foreach ($order['traces'] as &$item) {
-                $item = array_values(array_unique($item));
+            if (empty($express_type) || $order['express_status'] != DeliveryEnum::SHIPPED) {
+                $order['traces'] = ['暂无物流信息'];
+                return $order;
+            }
+            //快递配置设置为快递鸟时
+            if($express_type === 'express_bird') {
+                $expressage = (new Kdniao($express_bird['ebussiness_id'], $express_bird['app_key']));
+                $express_field = 'codebird';
+            } elseif($express_type === 'express_hundred') {
+                $expressage = (new Kd100($express_hundred['customer'], $express_hundred['app_key']));
+                $express_field = 'code100';
+            }
+
+            //快递编码
+            $express_code = Express::where('id',$order['express_id'])->value($express_field);
+
+            //获取物流轨迹
+            if ($express_code === 'SF' && $express_type === 'express_bird') {
+                $expressage->logistics($express_code, $order['invoice_no'], substr($order['address']->mobile,-4));
+            }else {
+                $expressage->logistics($express_code, $order['invoice_no']);
+            }
+
+            $order['traces'] = $expressage->logisticsFormat();
+            if ($order['traces'] == false) {
+                $order['traces'] = ['暂无物流信息'];
+            } else {
+                foreach ($order['traces'] as &$item) {
+                    $item = array_values(array_unique($item));
+                }
+            }
+        }else{
+//            $order['orderId'] = '202311070030100040220660';
+            $res = (new Akc())->orderTrack($order['orderId']);
+//            var_dump($res);die;
+            if($res['resultCode'] == 999999 && !empty($res['data'])){
+                $lists = $res['data'][0]['traceItemList'];
+                foreach ($lists as $item){
+                    $order['traces'][] = [$item['time'], $item['content']];
+                }
+            }else{
+                $order['traces'] = ['暂无物流信息'];
             }
         }
 

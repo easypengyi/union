@@ -49,6 +49,15 @@ class GoodsActivity extends BaseModel
     }
 
     /**
+     * @notes 关联活动推送
+     * @return \think\model\relation\hasMany
+     */
+    public function pushList()
+    {
+        return $this->hasMany(GoodsActivityPush::class, 'activity_id', 'id');
+    }
+
+    /**
      * 获取两个时间差
      *
      * @param $startDate
@@ -64,5 +73,4 @@ class GoodsActivity extends BaseModel
         $mins = intval($remain/60);
         return ['day'=> $days, 'hour'=> $hours < 10 ? '0'.$hours : $hours, 'min'=>$mins < 10 ? '0'.$mins : $mins];
     }
-
 }

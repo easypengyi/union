@@ -137,8 +137,9 @@ class BaseLogic
         curl_setopt ( $ch, CURLOPT_RETURNTRANSFER, 1 );
         curl_setopt ( $ch, CURLOPT_POSTFIELDS, $data );
         curl_setopt ($ch, CURLOPT_HTTPHEADER, $header);
-//        var_dump($ch);die;
+//
         $res = curl_exec ( $ch );
+//        var_dump($res);die;
         curl_close ( $ch );
 
         $data = json_decode($res, true, 512, JSON_BIGINT_AS_STRING);

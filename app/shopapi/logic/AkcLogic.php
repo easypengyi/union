@@ -65,6 +65,7 @@ class AkcLogic
     public static $urlFormal =[
         'category' => 'https://open.aikucun.com/open/api/category/getTree',  //获取商品分类
         'activety' => 'https://open.aikucun.com/open/api/activity/v2/list/filter',  //活动
+        'activityDetail'=> 'https://open.aikucun.com/open/api/activity/detail',
         'goods' => 'https://open.aikucun.com/open/api/product/list',  //获取商品
         'goodsDetail' => 'https://open.aikucun.com/open/api/product/detail',  //商品详情
         'goodsStock' => 'https://open.aikucun.com/open/api/inventory/query',  //库存

@@ -221,6 +221,9 @@ class CouponLogic
                 "name"            => $params['name'],
                 "send_total_type" => $params['send_total_type'],
                 "send_total"      => $params['send_total'] ?? 0,
+                // 使用商品
+                "use_goods_type"  => $params['use_goods_type'],
+                "use_goods_ids"   => empty($params['use_goods_ids']) ? '' : implode(',', $params['use_goods_ids'])
             ], ['id' => intval($params['id'])]);
 
         } elseif ($coupon['status'] == CouponEnum::COUPON_STATUS_END) {

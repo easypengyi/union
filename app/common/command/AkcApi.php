@@ -42,7 +42,7 @@ use app\adminapi\validate\goods\GoodsValidate;
 use app\common\model\Order;
 use app\common\model\Goods;
 use app\common\model\GoodsItem;
-
+use think\facade\Log;
 
 
 /**
@@ -261,15 +261,17 @@ class AkcApi extends Command
      */
     public function activity()
     {
+        Log::write('更新专场列表*********开始');
+        $__start_time = time();
         $dt = array();
         $dt['pageNo'] = $this->pageNo;
         $dt['pageSize'] = 1;
-        //['activeIds'] = [];
-        //$dt['activeIds'][0] ='1394579972933394434';
         $dt['activeModel'] = 1; //预告
+        Log::write('更新专场列表*********参数'.json_encode($dt));
         $activity = $this->curlUrl('activity', $dt);
 //        var_dump($activity);die;
         $total = $activity['total'];
+
         $pageTotal = ceil($total/$this->pageSize);
         $data = [];
         for ($k = 0; $k < $pageTotal; $k++)
@@ -283,13 +285,17 @@ class AkcApi extends Command
             $res = $activity['data'];
 
             for ($i=0;$i<count($res);$i++) {
-                $id = (new GoodsActivityValidate())->checkId($res[$i]['activity']['id'], array(), array());
-                if ($id)
+                $dt = $res[$i]['activity'];
+                $info = GoodsActivity::where('id', $dt['id'])->find();
+                if ($info)
                 {
-                    //print_r($id);
+                    if($info['startDate'] != $dt['startDate'] || $info['endDate'] != $dt['endDate'] || $info['name']!= $dt['name']){
+                        Log::write('更新专场列表*********更新'.json_encode($dt));
+                        GoodsActivity::where('id', $dt['id'])
+                            ->update(['startDate'=> $dt['startDate'], 'endDate'=> $dt['endDate'], 'name'=> $dt['name']]);
+                    }
                 }else
                 {
-                    $dt = $res[$i]['activity'];
                     if(!isset($dt['banner']) || empty($dt['banner'])){
                         continue;
                     }
@@ -308,10 +314,14 @@ class AkcApi extends Command
                     $dt['item_id'] =0;
                     $dt['banner'] = isset($dt['banner']) ? json_encode($dt['banner']) : '';
                     $data[] = $dt;
+                    Log::write('更新专场列表*********添加ID:'. $dt['id']);
                     $get= (new GoodsActivityLogic())->add($dt);
                 }
             }
         }
+
+        $__end_time = time();
+        Log::write('更新专场列表任务执行完成*********耗时:'. ($__end_time - $__start_time)."秒");
     }
 
     /**
@@ -322,7 +332,9 @@ class AkcApi extends Command
      * @throws \think\db\exception\ModelNotFoundException
      */
     public function activityDetail(){
-        $list = GoodsActivity::where('is_new', 1)->select()->toArray();
+        $list = GoodsActivity::where('id', '1764492884558942209')
+            ->where('is_new', 1)->select()->toArray();
+
         $num = 0;
         foreach ($list as $item){
             //活动详情
@@ -330,7 +342,7 @@ class AkcApi extends Command
                 'liveId'=> $item['id']
             ];
             $detail = $this->curlUrl('activityDetail', $params);
-
+            var_dump($detail);die;
             if($detail['resultCode'] == 999999 && isset($detail['data']['activity']['waterMarkLicense'])){
                 $waterMarkLicense = $detail['data']['activity']['waterMarkLicense'];
                 GoodsActivity::where('id', $item['id'])->update(['waterMarkLicense'=> $waterMarkLicense]);

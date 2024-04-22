@@ -21,13 +21,70 @@ namespace app\shopapi\lists;
 
 
 use app\common\enum\CouponEnum;
+use app\common\enum\GoodsEnum;
+use app\common\lists\ListsExtendInterface;
 use app\common\lists\ListsSearchInterface;
 use app\common\model\Coupon;
 use app\common\model\CouponList;
+use app\common\model\Goods;
 use app\common\service\TimeService;
 
-class CouponLists extends BaseShopDataLists
+class CouponLists extends BaseShopDataLists implements ListsExtendInterface
 {
+    public function extend()
+    {
+        $lists = Coupon::field('')
+            ->where(['status' => CouponEnum::COUPON_STATUS_CONDUCT])
+            ->where(['get_type' => CouponEnum::GET_TYPE_USER])
+            ->where(['use_goods_type' => CouponEnum::USE_GOODS_TYPE_ALLOW])
+            ->select()->toArray();
+        $goods_ids = [];
+        foreach ($lists as &$item) {
+            $goods_ids = array_merge($goods_ids, explode(',', $item['use_goods_ids']));
+        }
+        $where[] = ['status','=',GoodsEnum::STATUS_SELL];
+        $where[] = ['G.id','in',$goods_ids];
+
+        //找到推荐商品
+        $recommend = Goods::alias('G')
+            ->join('goods_category_index GCI','G.id = GCI.goods_id')
+            ->where($where)
+            ->field('G.id,name,image,min_price as sell_price,min_lineation_price as lineation_price')
+            ->group("G.id")
+            ->select()->toarray();
+
+        $styles = [
+            "bg_color"=> '#FFFFFF'
+        ];
+
+
+
+        $content = [
+            'btn_bg_type'=> 1,
+            'btn_text'=> '购买',
+            'header_title'=> '推荐购买',
+            'show_btn'=> 1,
+            'show_price'=> 1,
+            'show_scribing_price'=> 1,
+            'show_title'=> 1,
+            'style'=> 2,
+            'data'=> $recommend
+        ];
+        return [
+            'content'=> $content,
+            'show' => 1,
+            'styles'=> [
+                'header_title_color'=> '#333333',
+                'header_title_size'=> '20',
+                'margin_top'=> 0,
+                'title_color'=>"#101010"
+            ],
+            'title'=>"为您推荐"
+        ];
+
+
+    }
+
     /**
      * @notes 优惠券列表搜索条件
      * @return array
@@ -124,7 +181,11 @@ class CouponLists extends BaseShopDataLists
             ->select()
             ->toArray();
 
+        $goods_ids = [];
         foreach ($lists as &$item) {
+            if(!empty($item['use_goods_ids'])){
+                $goods_ids = array_merge($goods_ids, explode(',', $item['use_goods_ids']));
+            }
             $item['condition'] = $item['condition_type'] == 1
                 ? '无金额门槛'
                 : '满' . intval($item['condition_money']) . '使用';
@@ -169,6 +230,8 @@ class CouponLists extends BaseShopDataLists
             unset($item['update_time']);
             unset($item['delete_time']);
         }
+
+        //
 
         return $lists;
     }

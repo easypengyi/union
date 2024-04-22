@@ -100,19 +100,19 @@ class GroupLogic extends BaseLogic
         $res = self::reqPost('/shop/task/shopAccountList', $params);
         if($res['code'] == 1){
             $room_list = $res['data']['room_list'];
-            $list = GroupOperator::field('room_ids')
-                ->where('shop_id', $shop_id)->where('is_freeze', 0)->select();
-            $flag_room = [];
-            foreach ($list as $item){
-                $flag_room = array_merge($flag_room, explode(',', $item['room_ids']));
-            }
-            if(count($flag_room) > 0){
-                foreach($room_list as $key=>$room){
-                    if(in_array($room['value'], $flag_room)){
-                        unset($room_list[$key]);
-                    }
-                }
-            }
+//            $list = GroupOperator::field('room_ids')
+//                ->where('shop_id', $shop_id)->where('is_freeze', 0)->select();
+//            $flag_room = [];
+//            foreach ($list as $item){
+//                $flag_room = array_merge($flag_room, explode(',', $item['room_ids']));
+//            }
+//            if(count($flag_room) > 0){
+//                foreach($room_list as $key=>$room){
+//                    if(in_array($room['value'], $flag_room)){
+//                        unset($room_list[$key]);
+//                    }
+//                }
+//            }
             $res['data']['room_list'] = $room_list;
             return $res['data'];
         }
@@ -128,6 +128,7 @@ class GroupLogic extends BaseLogic
      */
     public static function open($params)
     {
+
         try {
             $countIds = $params['ids'];
             $user = User::where('id', $countIds[0])->find();
@@ -135,34 +136,68 @@ class GroupLogic extends BaseLogic
                 throw new \Exception('请选择有效用户');
             }
 
-            $group = GroupOperator::where('user_id', $countIds[0])->find();
-            if(!is_null($group)){
-                throw new \Exception('已经是运营商，无需重复操作');
-            }
-
             $level = GroupLevel::findOrEmpty($params['level_id']);
             if($level->isEmpty()) {
                 throw new \Exception('无效的运营等级');
             }
-            $room_ids = [];
-            $room_names = [];
-            foreach ($params['rooms'] as $room){
-                $room_ids[] = $room['value'];
-                $room_names[] = $room['name'];
-            }
-            $updateData = [
-                'user_id'=> $countIds[0],
-                'level_id'=> $params['level_id'],
-                'shop_id' => $params['shop_id'],
-                'shop_name'=> $params['shop_name'],
-                'room_ids'=> implode(',', $room_ids),
-                'room_names'=> implode(',', $room_names),
-                'account_id'=> $params['account_id'],
-                'account_name'=> $params['account_name'],
-                'operator_time'=> time()
-            ];
 
-            (new GroupOperator())->save($updateData);
+            if(empty($params['id'])){
+                $group = GroupOperator::where('user_id', $countIds[0])->find();
+                if(!is_null($group)){
+                    throw new \Exception('已经是运营商，无需重复操作');
+                }
+                //验证绑定群
+                foreach ($params['room_ids'] as $room_id){
+                    $info = GroupOperator::where('is_freeze', 0)->whereFindInSet('room_ids', $room_id)->find();
+                    if(!is_null($info)){
+                        throw new \Exception('群已被绑定，请确认');
+                    }
+                }
+
+                $updateData = [
+                    'user_id'=> $countIds[0],
+                    'level_id'=> $params['level_id'],
+                    'shop_id' => $params['shop_id'],
+                    'shop_name'=> $params['shop_name'],
+                    'room_ids'=> implode(',', $params['room_ids']),
+                    'room_names'=> implode(',', $params['room_names']),
+                    'account_id'=> $params['account_id'],
+                    'account_name'=> $params['account_name'],
+                    'operator_time'=> time()
+                ];
+
+                (new GroupOperator())->save($updateData);
+            }else{
+                $group = GroupOperator::where('id', '<>', $params['id'])
+                    ->where('user_id', $countIds[0])->find();
+                if(!is_null($group)){
+                    throw new \Exception('已经是运营商，无需重复操作');
+                }
+                //验证绑定群
+                foreach ($params['room_ids'] as $room_id){
+                    $info = GroupOperator::where('id', '<>', $params['id'])
+                        ->where('is_freeze', 0)
+                        ->whereFindInSet('room_ids', $room_id)->find();
+
+                    if(!is_null($info)){
+                        throw new \Exception('群已被绑定，请确认');
+                    }
+                }
+                $updateData = [
+//                    'user_id'=> $countIds[0],
+                    'level_id'=> $params['level_id'],
+                    'shop_id' => $params['shop_id'],
+                    'shop_name'=> $params['shop_name'],
+                    'room_ids'=> implode(',', $params['room_ids']),
+                    'room_names'=> implode(',', $params['room_names']),
+                    'account_id'=> $params['account_id'],
+                    'account_name'=> $params['account_name'],
+                    'operator_time'=> time()
+                ];
+
+                GroupOperator::where('id', $params['id'])->update($updateData);
+            }
+
             return true;
         } catch(\Exception $e) {
             self::setError($e->getMessage());
@@ -183,7 +218,12 @@ class GroupLogic extends BaseLogic
             'u.sn',
             'u.nickname',
             'd.user_id',
-            'd.level_id'
+            'd.level_id',
+            'd.shop_id',
+            'd.shop_name',
+            'd.account_id',
+            'd.room_ids',
+            'd.room_names',
         ];
         $user = GroupOperator::alias('d')
             ->join('user u', 'u.id = d.user_id')
@@ -193,10 +233,12 @@ class GroupLogic extends BaseLogic
             ->toArray();
         $user['level_name'] = GroupLevel::getLevelName($user['level_id']);
         $levels = GroupLevel::order('weights', 'asc')->column('id,name,weights');
+        $user['rooms'] = explode(',', $user['room_ids']);
+        $user['rooms'] = explode(',', $user['room_names']);
 
         return [
             'user' => $user,
-            'levels' => $levels
+            'levels' => $levels,
         ];
     }
 
